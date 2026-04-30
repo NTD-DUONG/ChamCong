@@ -1,8 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { db } from "@/lib/firebase";
+import { doc, onSnapshot, setDoc } from "firebase/firestore";
 
 const STORAGE_KEY = "personal-attendance-v1";
+const PIN_KEY = "attendance-edit-mode";
+const SECRET_PIN = "2004";
+
 const SHIFT_CONFIG = [
   { key: "morning", label: "S" },
   { key: "afternoon", label: "C" },
@@ -127,7 +132,7 @@ function DateInput({ value, onChange }) {
   );
 }
 
-function Modal({ isOpen, dateKey, entries, onClose, onSave }) {
+function Modal({ isOpen, dateKey, entries, isEditing, onClose, onSave }) {
   const [localEntry, setLocalEntry] = useState({});
 
   useEffect(() => {
@@ -143,15 +148,18 @@ function Modal({ isOpen, dateKey, entries, onClose, onSave }) {
   const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; // 0 = CN, 6 = T7
 
   const handleChoice = (shiftKey, value) => {
+    if (!isEditing) return;
     setLocalEntry((prev) => ({ ...prev, [shiftKey]: value }));
   };
 
   const handleSave = () => {
+    if (!isEditing) return;
     onSave(dateKey, localEntry);
     onClose();
   };
 
   const handleDelete = () => {
+    if (!isEditing) return;
     setLocalEntry({});
   };
 
@@ -224,9 +232,10 @@ function Modal({ isOpen, dateKey, entries, onClose, onSave }) {
                     {STATUS_OPTIONS.map(({ value }) => (
                       <button
                         key={value}
+                        disabled={!isEditing}
                         className={`shift-choice ${
                           status === value ? "is-active" : ""
-                        }`}
+                        } ${!isEditing ? "is-readonly" : ""}`}
                         data-value={value}
                         onClick={() => handleChoice(shiftKey, value)}
                       >
@@ -242,14 +251,22 @@ function Modal({ isOpen, dateKey, entries, onClose, onSave }) {
               );
             })}
           </div>
-          <div className="modal-actions">
-            <button className="primary-btn" onClick={handleSave}>
-              Lưu
-            </button>
-            <button className="danger-btn" onClick={handleDelete}>
-              Xóa
-            </button>
-          </div>
+          {isEditing ? (
+            <div className="modal-actions">
+              <button className="primary-btn" onClick={handleSave}>
+                Lưu
+              </button>
+              <button className="danger-btn" onClick={handleDelete}>
+                Xóa
+              </button>
+            </div>
+          ) : (
+            <div className="modal-actions">
+              <button className="ghost-btn" style={{ gridColumn: 'span 2' }} onClick={onClose}>
+                Chế độ chỉ xem
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </>
@@ -340,26 +357,49 @@ export default function Home() {
   const [hydrated, setHydrated] = useState(false);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [showPinInput, setShowPinInput] = useState(false);
+  const [pin, setPin] = useState("");
 
-  // Load from localStorage on mount
+  // Sync with Firestore
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        setEntries(normalizeEntries(JSON.parse(stored)));
-      } catch {
-        setEntries({});
+    const unsub = onSnapshot(doc(db, "attendance", "main"), (doc) => {
+      if (doc.exists()) {
+        setEntries(normalizeEntries(doc.data().entries));
       }
+    });
+
+    // Check local session for edit mode
+    const savedEditMode = localStorage.getItem(PIN_KEY);
+    if (savedEditMode === SECRET_PIN) {
+      setIsEditing(true);
     }
+
     setHydrated(true);
+    return () => unsub();
   }, []);
 
-  // Save to localStorage whenever entries change
-  useEffect(() => {
-    if (hydrated) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  const handleToggleEdit = () => {
+    if (isEditing) {
+      setIsEditing(false);
+      localStorage.removeItem(PIN_KEY);
+    } else {
+      setShowPinInput(true);
     }
-  }, [entries, hydrated]);
+  };
+
+  const handlePinSubmit = (e) => {
+    e.preventDefault();
+    if (pin === SECRET_PIN) {
+      setIsEditing(true);
+      setShowPinInput(false);
+      setPin("");
+      localStorage.setItem(PIN_KEY, SECRET_PIN);
+    } else {
+      alert("Mã PIN không chính xác!");
+      setPin("");
+    }
+  };
 
   const handleOpenModal = (dateKey) => {
     const selectedDate = parseDateKey(dateKey);
@@ -376,11 +416,25 @@ export default function Home() {
     setModalOpen(true);
   };
 
-  const handleSaveModal = (dateKey, shiftData) => {
-    setEntries((prev) => ({
-      ...prev,
+  const handleSaveModal = async (dateKey, shiftData) => {
+    if (!isEditing) return;
+    
+    const newEntries = {
+      ...entries,
       [dateKey]: shiftData,
-    }));
+    };
+    
+    setEntries(newEntries);
+
+    // Save to Firestore
+    try {
+      await setDoc(doc(db, "attendance", "main"), {
+        entries: newEntries,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error("Error saving to Firestore:", err);
+    }
   };
 
   const handleCloseModal = () => {
@@ -440,12 +494,7 @@ export default function Home() {
     toDate: safeToDate,
   });
 
-  const monthFormatter = new Intl.DateTimeFormat("vi-VN", {
-    month: "long",
-    year: "numeric",
-  });
-
-  if (!hydrated) return null; // Prevent hydration mismatch
+  if (!hydrated) return null;
 
   return (
     <div>
@@ -453,14 +502,68 @@ export default function Home() {
       <div className="backdrop backdrop-b" />
 
       <div className="shell">
+        {/* PIN Modal */}
+        {showPinInput && (
+          <>
+            <div className="modal-backdrop" onClick={() => setShowPinInput(false)} />
+            <div className="attendance-modal">
+              <div className="attendance-modal__panel">
+                <h3 style={{ marginBottom: '16px', textAlign: 'center' }}>Nhập mã PIN để chỉnh sửa</h3>
+                <form onSubmit={handlePinSubmit} className="shift-modal-stack">
+                  <input
+                    type="password"
+                    autoFocus
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value)}
+                    placeholder="****"
+                    style={{
+                      padding: '12px',
+                      fontSize: '1.5rem',
+                      textAlign: 'center',
+                      borderRadius: '12px',
+                      border: '1px solid var(--stroke)',
+                      letterSpacing: '0.5em',
+                      backgroundColor: 'rgba(15, 23, 42, 0.03)',
+                      width: '100%'
+                    }}
+                  />
+                  <div className="modal-actions">
+                    <button type="submit" className="primary-btn">Xác nhận</button>
+                    <button type="button" className="ghost-btn" onClick={() => setShowPinInput(false)}>Hủy</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </>
+        )}
+
         {/* Hero Section */}
         <div className="hero">
-          <div>
+          <div style={{ position: 'relative' }}>
             <p className="eyebrow">Nguyễn Thùy Dương</p>
             <h1>Số ngày cống hiến</h1>
             <p className="hero-copy">
               Ứng dụng này dùng để theo dõi chấm công của D tại công ty V
             </p>
+            <button 
+              onClick={handleToggleEdit}
+              className={`ghost-btn ${isEditing ? 'is-active' : ''}`}
+              style={{ 
+                marginTop: '12px',
+                padding: '4px 10px',
+                fontSize: '0.7rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: isEditing ? 'rgba(22, 163, 74, 0.1)' : 'rgba(15, 23, 42, 0.05)',
+                color: isEditing ? 'var(--success)' : 'var(--muted)',
+                borderColor: isEditing ? 'var(--success)' : 'transparent'
+              }}
+            >
+              {isEditing ? '🔓 Chế độ chỉnh sửa' : '🔒 Chế độ chỉ xem'}
+            </button>
           </div>
           <div className="stats">
             <div className="stat-card">
@@ -576,6 +679,7 @@ export default function Home() {
         isOpen={modalOpen}
         dateKey={modalDateKey}
         entries={entries}
+        isEditing={isEditing}
         onClose={handleCloseModal}
         onSave={handleSaveModal}
       />

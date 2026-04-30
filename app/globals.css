@@ -18,6 +18,10 @@
   box-sizing: border-box;
 }
 
+html, body {
+  overflow-x: hidden;
+}
+
 html,
 body {
   min-height: 100%;
@@ -532,19 +536,24 @@ h1 {
 .attendance-modal {
   position: fixed;
   inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
   z-index: 21;
 }
 
 .attendance-modal__panel {
-  width: min(500px, 100%);
-  border-radius: 24px;
-  padding: 16px;
-  background: rgba(255, 255, 255, 0.98);
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.16);
+  width: 100%;
+  max-width: 440px;
+  max-height: 85vh;
+  overflow-y: auto;
+  border-radius: 20px;
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid var(--stroke);
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.15);
+  -webkit-overflow-scrolling: touch;
 }
 
 .attendance-modal[hidden],
@@ -708,11 +717,19 @@ button {
   }
 
   .stats {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stat-card {
+    grid-column: span 1;
+  }
+
+  .date-field {
+    grid-column: span 1;
   }
 
   .stats-filter-actions {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .detail-card {
@@ -720,9 +737,35 @@ button {
     top: 0;
   }
 
+  .calendar-card {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .calendar-inner {
+    min-width: 520px;
+  }
+
   .calendar-grid,
   .weekday-row {
-    min-width: 680px;
-    overflow-x: auto;
+    min-width: 520px;
+  }
+
+  .day-cell {
+    min-height: 46px;
+  }
+
+  .toolbar {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .toolbar-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .shell {
+    width: calc(100% - 16px);
   }
 }
