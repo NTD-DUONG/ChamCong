@@ -5,7 +5,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
   title: "Ngày Cống Hiến",
-  description: "Personal attendance timecard tracker",
+  description: "1 chú khỉ buồn ởtầng 7",
 };
 
 export default function RootLayout({ children }) {
