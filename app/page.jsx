@@ -608,7 +608,7 @@ export default function Home() {
                 className="ghost-btn"
                 onClick={handleSetCurrentMonthRange}
               >
-                Tháng này
+                📅 Tháng này
               </button>
               <button
                 type="button"
@@ -618,7 +618,7 @@ export default function Home() {
                   setToDate("");
                 }}
               >
-                Bỏ lọc
+                🧹 Bỏ lọc
               </button>
             </div>
           </div>
