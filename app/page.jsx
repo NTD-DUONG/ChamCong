@@ -511,7 +511,7 @@ export default function Home() {
   if (!hydrated) return null;
 
   return (
-    <div>
+    <div className="main-layout">
       <div className="backdrop backdrop-a" />
       <div className="backdrop backdrop-b" />
 
