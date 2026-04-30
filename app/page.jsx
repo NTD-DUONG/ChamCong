@@ -117,18 +117,18 @@ const normalizeEntries = (rawEntries) => {
 };
 
 function DateInput({ value, onChange }) {
-  const [focused, setFocused] = useState(false);
-  const displayValue = value ? value.split("-").reverse().join("/") : "";
-
   return (
-    <input
-      type={focused ? "date" : "text"}
-      value={focused ? value : displayValue}
-      placeholder="dd/mm/yyyy"
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
-      onChange={(e) => onChange(e.target.value)}
-    />
+    <div className="date-input-wrapper">
+      <input
+        type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="native-date-input"
+      />
+      <div className="date-display">
+        {value ? value.split("-").reverse().join("/") : "dd/mm/yyyy"}
+      </div>
+    </div>
   );
 }
 
