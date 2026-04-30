@@ -355,8 +355,25 @@ export default function Home() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalDateKey, setModalDateKey] = useState(null);
   const [hydrated, setHydrated] = useState(false);
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
+  const getDefaultRange = (date) => {
+    const now = date || new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+
+    // From 28th of last month
+    const from = new Date(currentYear, currentMonth - 1, 28);
+    // To 27th of this month
+    const to = new Date(currentYear, currentMonth, 27);
+
+    return {
+      from: formatDateKey(from),
+      to: formatDateKey(to)
+    };
+  };
+
+  const initialRange = getDefaultRange();
+  const [fromDate, setFromDate] = useState(initialRange.from);
+  const [toDate, setToDate] = useState(initialRange.to);
   const [isEditing, setIsEditing] = useState(false);
   const [showPinInput, setShowPinInput] = useState(false);
   const [pin, setPin] = useState("");
@@ -473,12 +490,9 @@ export default function Home() {
   };
 
   const handleSetCurrentMonthRange = () => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-    const start = new Date(year, month, 1);
-    const end = new Date(year, month + 1, 0);
-    setFromDate(formatDateKey(start));
-    setToDate(formatDateKey(end));
+    const range = getDefaultRange(currentMonth);
+    setFromDate(range.from);
+    setToDate(range.to);
   };
 
   const cells = getMonthCells(currentMonth);
