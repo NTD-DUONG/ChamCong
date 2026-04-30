@@ -559,7 +559,7 @@ export default function Home() {
             <p className="eyebrow">Nguyễn Thùy Dương</p>
             <h1>Số ngày cống hiến</h1>
             <p className="hero-copy">
-              Ứng dụng này dùng để theo dõi chấm công của D tại công ty V
+              Cái thứ này dùng để theo dõi chấm công của D tại công ty V
             </p>
             <button 
               onClick={handleToggleEdit}
